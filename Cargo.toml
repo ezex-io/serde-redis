@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/OneSignal/serde-redis"
 documentation = "https://docs.rs/serde-redis"
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 redis = "0.29"

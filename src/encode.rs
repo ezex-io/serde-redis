@@ -1,5 +1,5 @@
 use redis::Value;
-use serde::{self, ser, Serialize};
+use serde::{self, Serialize, ser};
 use std::fmt::{self, Display};
 use std::{error, str};
 

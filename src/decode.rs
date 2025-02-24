@@ -339,7 +339,7 @@ impl<'de> serde::Deserializer<'de> for Deserializer<'_> {
                 return Err(Error::WrongValue(format!(
                     "Expected 1/0/true/false/True/False, got {}",
                     s
-                )))
+                )));
             }
         };
 
