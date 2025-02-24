@@ -15,7 +15,7 @@ use redis::Value;
 
 #[test]
 fn deserialize_unit_struct_string() {
-    let v = Value::Data(b"hello".to_vec());
+    let v = Value::BulkString(b"hello".to_vec());
 
     #[derive(Deserialize, Debug, PartialEq)]
     struct Unit(String);
@@ -45,15 +45,15 @@ fn deserialize_unit_struct_u8_redis_int() {
 #[test]
 fn deserialize_bool() {
     let v = vec![
-        Value::Data(b"0".to_vec()),
-        Value::Data(b"false".to_vec()),
-        Value::Data(b"False".to_vec()),
-        Value::Data(b"1".to_vec()),
-        Value::Data(b"true".to_vec()),
-        Value::Data(b"True".to_vec()),
+        Value::BulkString(b"0".to_vec()),
+        Value::BulkString(b"false".to_vec()),
+        Value::BulkString(b"False".to_vec()),
+        Value::BulkString(b"1".to_vec()),
+        Value::BulkString(b"true".to_vec()),
+        Value::BulkString(b"True".to_vec()),
     ];
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Vec<bool> = Deserialize::deserialize(de).unwrap();
@@ -64,9 +64,9 @@ fn deserialize_bool() {
 
 #[test]
 fn deserialize_tuple() {
-    let v = vec![Value::Int(5), Value::Data(b"hello".to_vec())];
+    let v = vec![Value::Int(5), Value::BulkString(b"hello".to_vec())];
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: (u8, String) = Deserialize::deserialize(de).unwrap();
@@ -78,10 +78,10 @@ fn deserialize_tuple() {
 #[test]
 fn deserialize_struct() {
     let v = vec![
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
     ];
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -90,7 +90,7 @@ fn deserialize_struct() {
         b: String,
     }
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Simple = Deserialize::deserialize(de).unwrap();
@@ -106,17 +106,17 @@ fn deserialize_struct() {
 #[test]
 fn deserialize_hash_map_strings() {
     let v = vec![
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
     ];
 
     let mut expected = HashMap::new();
     expected.insert("a".to_string(), "apple".to_string());
     expected.insert("b".to_string(), "banana".to_string());
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: HashMap<String, String> = Deserialize::deserialize(de).unwrap();
@@ -126,7 +126,7 @@ fn deserialize_hash_map_strings() {
 
 #[test]
 fn deserialize_float() {
-    let v = Value::Data(b"3.14159".to_vec());
+    let v = Value::BulkString(b"3.14159".to_vec());
 
     let expected = "3.14159".parse::<f32>().unwrap();
 
@@ -139,17 +139,17 @@ fn deserialize_float() {
 #[test]
 fn deserialize_hash_map_string_u8() {
     let v = vec![
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"1".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"2".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"1".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"2".to_vec()),
     ];
 
     let mut expected = HashMap::new();
     expected.insert("a".to_string(), 1);
     expected.insert("b".to_string(), 2);
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: HashMap<String, u8> = Deserialize::deserialize(de).unwrap();
@@ -160,10 +160,10 @@ fn deserialize_hash_map_string_u8() {
 #[test]
 fn deserialize_struct_out_of_order() {
     let v = vec![
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
     ];
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -172,7 +172,7 @@ fn deserialize_struct_out_of_order() {
         b: String,
     }
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Simple = Deserialize::deserialize(de).unwrap();
@@ -188,12 +188,12 @@ fn deserialize_struct_out_of_order() {
 #[test]
 fn deserialize_struct_extra_keys() {
     let v = vec![
-        Value::Data(b"c".to_vec()),
-        Value::Data(b"cranberry".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
+        Value::BulkString(b"c".to_vec()),
+        Value::BulkString(b"cranberry".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
     ];
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -202,7 +202,7 @@ fn deserialize_struct_extra_keys() {
         b: String,
     }
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Simple = Deserialize::deserialize(de).unwrap();
@@ -217,7 +217,7 @@ fn deserialize_struct_extra_keys() {
 
 #[test]
 fn deserialize_enum() {
-    let v = Value::Data(b"Orange".to_vec());
+    let v = Value::BulkString(b"Orange".to_vec());
 
     #[derive(Debug, Deserialize, PartialEq)]
     enum Fruit {
@@ -242,12 +242,12 @@ fn deserialize_option() {
 #[test]
 fn deserialize_complex_struct() {
     let v = vec![
-        Value::Data(b"num".to_vec()),
-        Value::Data(b"10".to_vec()),
-        Value::Data(b"opt".to_vec()),
-        Value::Data(b"yes".to_vec()),
-        Value::Data(b"s".to_vec()),
-        Value::Data(b"yarn".to_vec()),
+        Value::BulkString(b"num".to_vec()),
+        Value::BulkString(b"10".to_vec()),
+        Value::BulkString(b"opt".to_vec()),
+        Value::BulkString(b"yes".to_vec()),
+        Value::BulkString(b"s".to_vec()),
+        Value::BulkString(b"yarn".to_vec()),
     ];
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -265,7 +265,7 @@ fn deserialize_complex_struct() {
         s: "yarn".to_owned(),
     };
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Complex = Deserialize::deserialize(de).unwrap();
@@ -276,12 +276,12 @@ fn deserialize_complex_struct() {
 #[test]
 fn deserialize_vec_of_strings() {
     let v = vec![
-        Value::Data(b"first".to_vec()),
-        Value::Data(b"second".to_vec()),
-        Value::Data(b"third".to_vec()),
+        Value::BulkString(b"first".to_vec()),
+        Value::BulkString(b"second".to_vec()),
+        Value::BulkString(b"third".to_vec()),
     ];
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Vec<String> = Deserialize::deserialize(de).unwrap();
@@ -297,15 +297,15 @@ fn deserialize_vec_of_strings() {
 #[test]
 fn deserialize_vec_of_newtype() {
     let v = vec![
-        Value::Data(b"first".to_vec()),
-        Value::Data(b"second".to_vec()),
-        Value::Data(b"third".to_vec()),
+        Value::BulkString(b"first".to_vec()),
+        Value::BulkString(b"second".to_vec()),
+        Value::BulkString(b"third".to_vec()),
     ];
 
     #[derive(Debug, PartialEq, Deserialize)]
     struct Rank(String);
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Vec<Rank> = Deserialize::deserialize(de).unwrap();
@@ -325,18 +325,18 @@ fn deserialize_vec_of_newtype() {
 /// not handle this.
 #[test]
 fn deserialize_pipelined_hmap() {
-    let values = Value::Bulk(vec![
-        Value::Bulk(vec![
-            Value::Data(b"a".to_vec()),
-            Value::Data(b"apple".to_vec()),
-            Value::Data(b"b".to_vec()),
-            Value::Data(b"banana".to_vec()),
+    let values = Value::Array(vec![
+        Value::Array(vec![
+            Value::BulkString(b"a".to_vec()),
+            Value::BulkString(b"apple".to_vec()),
+            Value::BulkString(b"b".to_vec()),
+            Value::BulkString(b"banana".to_vec()),
         ]),
-        Value::Bulk(vec![
-            Value::Data(b"a".to_vec()),
-            Value::Data(b"art".to_vec()),
-            Value::Data(b"b".to_vec()),
-            Value::Data(b"bold".to_vec()),
+        Value::Array(vec![
+            Value::BulkString(b"a".to_vec()),
+            Value::BulkString(b"art".to_vec()),
+            Value::BulkString(b"b".to_vec()),
+            Value::BulkString(b"bold".to_vec()),
         ]),
     ]);
 
@@ -365,11 +365,11 @@ fn deserialize_pipelined_hmap() {
 
 #[test]
 fn deserialize_pipelined_single_hmap() {
-    let values = Value::Bulk(vec![Value::Bulk(vec![
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
+    let values = Value::Array(vec![Value::Array(vec![
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
     ])]);
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -392,10 +392,10 @@ fn deserialize_pipelined_single_hmap() {
 #[test]
 fn deserialize_struct_with_newtype_field() {
     let v = vec![
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
     ];
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -407,7 +407,7 @@ fn deserialize_struct_with_newtype_field() {
         b: Fruit,
     }
 
-    let data = Value::Bulk(v);
+    let data = Value::Array(v);
 
     let de = Deserializer::new(&data);
     let actual: Simple = Deserialize::deserialize(de).unwrap();
@@ -422,7 +422,7 @@ fn deserialize_struct_with_newtype_field() {
 
 #[test]
 fn deserialize_byte_buf() {
-    let data = Value::Data(b"0000".to_vec());
+    let data = Value::BulkString(b"0000".to_vec());
     let de = Deserializer::new(&data);
     let actual: serde_bytes::ByteBuf = Deserialize::deserialize(de).unwrap();
 
@@ -435,11 +435,11 @@ fn deserialize_pipelined_single_hmap_newtype_fields() {
     #[derive(Debug, Deserialize, PartialEq)]
     struct Fruit(String);
 
-    let values = Value::Bulk(vec![Value::Bulk(vec![
-        Value::Data(b"a".to_vec()),
-        Value::Data(b"apple".to_vec()),
-        Value::Data(b"b".to_vec()),
-        Value::Data(b"banana".to_vec()),
+    let values = Value::Array(vec![Value::Array(vec![
+        Value::BulkString(b"a".to_vec()),
+        Value::BulkString(b"apple".to_vec()),
+        Value::BulkString(b"b".to_vec()),
+        Value::BulkString(b"banana".to_vec()),
     ])]);
 
     #[derive(Debug, Deserialize, PartialEq)]
@@ -470,18 +470,18 @@ type MapMapList = ::std::collections::HashMap<String, Details>;
 
 #[test]
 fn deserialize_nested_map_map_list() {
-    let value = Value::Bulk(vec![
-        Value::Data(b"key".to_vec()),
-        Value::Bulk(vec![
-            Value::Data(b"count".to_vec()),
-            Value::Data(b"4".to_vec()),
-            Value::Data(b"time".to_vec()),
-            Value::Data(b"1473359995".to_vec()),
-            Value::Data(b"ids".to_vec()),
-            Value::Bulk(vec![
-                Value::Data(b"00000000-0000-0000-0000-000000000000".to_vec()),
-                Value::Data(b"00000000-0000-0000-0000-000000000001".to_vec()),
-                Value::Data(b"00000000-0000-0000-0000-000000000002".to_vec()),
+    let value = Value::Array(vec![
+        Value::BulkString(b"key".to_vec()),
+        Value::Array(vec![
+            Value::BulkString(b"count".to_vec()),
+            Value::BulkString(b"4".to_vec()),
+            Value::BulkString(b"time".to_vec()),
+            Value::BulkString(b"1473359995".to_vec()),
+            Value::BulkString(b"ids".to_vec()),
+            Value::Array(vec![
+                Value::BulkString(b"00000000-0000-0000-0000-000000000000".to_vec()),
+                Value::BulkString(b"00000000-0000-0000-0000-000000000001".to_vec()),
+                Value::BulkString(b"00000000-0000-0000-0000-000000000002".to_vec()),
             ]),
         ]),
     ]);
@@ -505,7 +505,7 @@ fn deserialize_nested_map_map_list() {
 #[test]
 #[should_panic]
 fn deserialize_nested_item() {
-    let value = Value::Bulk(vec![Value::Bulk(vec![Value::Data(b"hi".to_vec())])]);
+    let value = Value::Array(vec![Value::Array(vec![Value::BulkString(b"hi".to_vec())])]);
 
     let de = Deserializer::new(&value);
     let _hellos: Vec<String> = Deserialize::deserialize(de).unwrap();

@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn chain_deserialize_works() {
-        let v = Value::Bulk(vec![Value::Int(5), Value::Data(b"hello".to_vec())]);
+        let v = Value::Array(vec![Value::Int(5), Value::BulkString(b"hello".to_vec())]);
 
         let actual: (u8, String) = v.deserialize().unwrap();
         let expected = (5, "hello".into());
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn from_redis_value_works_with_owned() {
-        let v = Value::Bulk(vec![Value::Int(5), Value::Data(b"hello".to_vec())]);
+        let v = Value::Array(vec![Value::Int(5), Value::BulkString(b"hello".to_vec())]);
 
         let actual: (u8, String) = from_redis_value(v).unwrap();
         let expected = (5, "hello".into());
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn from_redis_value_works_with_borrow() {
-        let v = Value::Bulk(vec![Value::Int(5), Value::Data(b"hello".to_vec())]);
+        let v = Value::Array(vec![Value::Int(5), Value::BulkString(b"hello".to_vec())]);
 
         let actual: (u8, String) = from_redis_value(&v).unwrap();
         let expected = (5, "hello".into());
