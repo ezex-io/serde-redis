@@ -135,33 +135,33 @@ pub struct Deserializer<'a> {
 }
 
 pub trait AsValueVec<'a> {
-    fn as_value_vec(self) -> Vec<Cow<'a, Value>>;
+    fn to_value_vec(self) -> Vec<Cow<'a, Value>>;
 }
 
 impl<'a> AsValueVec<'a> for &'a Value {
     #[inline]
-    fn as_value_vec(self) -> Vec<Cow<'a, Value>> {
+    fn to_value_vec(self) -> Vec<Cow<'a, Value>> {
         vec![Cow::Borrowed(self)]
     }
 }
 
 impl<'a> AsValueVec<'a> for Cow<'a, Value> {
     #[inline]
-    fn as_value_vec(self) -> Vec<Cow<'a, Value>> {
+    fn to_value_vec(self) -> Vec<Cow<'a, Value>> {
         vec![self]
     }
 }
 
 impl AsValueVec<'static> for Value {
     #[inline]
-    fn as_value_vec(self) -> Vec<Cow<'static, Value>> {
+    fn to_value_vec(self) -> Vec<Cow<'static, Value>> {
         vec![Cow::Owned(self)]
     }
 }
 
 impl<'a> AsValueVec<'a> for Vec<Cow<'a, Value>> {
     #[inline]
-    fn as_value_vec(self) -> Vec<Cow<'a, Value>> {
+    fn to_value_vec(self) -> Vec<Cow<'a, Value>> {
         self
     }
 }
@@ -172,7 +172,7 @@ impl<'a> Deserializer<'a> {
         V: AsValueVec<'a>,
     {
         Deserializer {
-            values: values.as_value_vec().into_iter().peekable(),
+            values: values.to_value_vec().into_iter().peekable(),
         }
     }
 
@@ -186,37 +186,37 @@ impl<'a> Deserializer<'a> {
 
     /// Return the next value
     #[inline]
-    pub fn next(&mut self) -> Result<Cow<'a, Value>> {
+    pub fn next_value(&mut self) -> Result<Cow<'a, Value>> {
         match self.values.next() {
             Some(value) => Ok(value),
             None => Err(Error::EndOfStream),
         }
     }
 
-    pub fn next_bulk(&mut self) -> Result<Cow<'a, Vec<Value>>> {
-        match self.next()? {
-            Cow::Owned(Value::Bulk(values)) => Ok(Cow::Owned(values)),
-            Cow::Borrowed(Value::Bulk(values)) => Ok(Cow::Borrowed(values)),
-            v @ _ => Err(Error::wrong_value(format!("expected bulk but got {:?}", v))),
+    pub fn next_array(&mut self) -> Result<Cow<'a, Vec<Value>>> {
+        match self.next_value()? {
+            Cow::Owned(Value::Array(values)) => Ok(Cow::Owned(values)),
+            Cow::Borrowed(Value::Array(values)) => Ok(Cow::Borrowed(values)),
+            v => Err(Error::wrong_value(format!("expected bulk but got {:?}", v))),
         }
     }
 
     pub fn next_bytes(&mut self) -> Result<Cow<'a, Vec<u8>>> {
-        match self.next()? {
-            Cow::Owned(Value::Data(bytes)) => Ok(Cow::Owned(bytes)),
-            Cow::Borrowed(Value::Data(bytes)) => Ok(Cow::Borrowed(bytes)),
+        match self.next_value()? {
+            Cow::Owned(Value::BulkString(bytes)) => Ok(Cow::Owned(bytes)),
+            Cow::Borrowed(Value::BulkString(bytes)) => Ok(Cow::Borrowed(bytes)),
             v => {
                 let msg = format!("Expected bytes, but got {:?}", v);
-                return Err(Error::wrong_value(msg));
+                Err(Error::wrong_value(msg))
             }
         }
     }
 
     pub fn read_string(&mut self) -> Result<Cow<'a, str>> {
-        let redis_value = self.next()?;
+        let redis_value = self.next_value()?;
         Ok(match redis_value {
-            Cow::Owned(Value::Data(bytes)) => Cow::Owned(String::from_utf8(bytes)?),
-            Cow::Borrowed(Value::Data(bytes)) => Cow::Borrowed(str::from_utf8(bytes)?),
+            Cow::Owned(Value::BulkString(bytes)) => Cow::Owned(String::from_utf8(bytes)?),
+            Cow::Borrowed(Value::BulkString(bytes)) => Cow::Borrowed(str::from_utf8(bytes)?),
             _ => {
                 let msg = format!("Expected Data, got {:?}", &redis_value);
                 return Err(Error::wrong_value(msg));
@@ -232,13 +232,13 @@ macro_rules! impl_num {
         where
             V: de::Visitor<'de>,
         {
-            let redis_value = self.next()?;
+            let redis_value = self.next_value()?;
             let value = match redis_value {
-                Cow::Borrowed(Value::Data(bytes)) => {
+                Cow::Borrowed(Value::BulkString(bytes)) => {
                     let s = str::from_utf8(bytes)?;
                     s.parse::<$ty>()?
                 }
-                Cow::Owned(Value::Data(bytes)) => {
+                Cow::Owned(Value::BulkString(bytes)) => {
                     let s = String::from_utf8(bytes)?;
                     s.parse::<$ty>()?
                 }
@@ -268,7 +268,7 @@ macro_rules! default_deserialize {
     }
 }
 
-impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
+impl<'de> serde::Deserializer<'de> for Deserializer<'_> {
     type Error = Error;
 
     #[inline]
@@ -339,7 +339,7 @@ impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
                 return Err(Error::WrongValue(format!(
                     "Expected 1/0/true/false/True/False, got {}",
                     s
-                )))
+                )));
             }
         };
 
@@ -392,7 +392,7 @@ impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
     where
         V: de::Visitor<'de>,
     {
-        let values = self.next_bulk()?;
+        let values = self.next_array()?;
         visitor.visit_seq(SeqVisitor {
             iter: CowIter::new(values),
         })
@@ -403,7 +403,7 @@ impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
     where
         V: de::Visitor<'de>,
     {
-        let values = self.next_bulk()?;
+        let values = self.next_array()?;
         visitor.visit_map(MapVisitor {
             iter: CowIter::new(values),
         })
@@ -449,7 +449,7 @@ impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
         V: de::Visitor<'de>,
     {
         visitor.visit_enum(EnumVisitor {
-            variant: self.next()?,
+            variant: self.next_value()?,
             content: Cow::Owned(Value::Nil),
         })
     }
@@ -461,11 +461,11 @@ impl<'a, 'de> serde::Deserializer<'de> for Deserializer<'a> {
     {
         let maybe = match self.peek() {
             Some(v) => match *v {
-                Value::Data(_) => Some(()),
+                Value::BulkString(_) => Some(()),
                 Value::Int(_) => Some(()),
                 Value::Nil => None,
                 _ => {
-                    let msg = format!("Expected Data, Int, or Nil");
+                    let msg = "Expected Data, Int, or Nil".to_string();
                     return Err(Error::wrong_value(msg));
                 }
             },
@@ -500,7 +500,7 @@ struct SeqVisitor<'a> {
     iter: CowIter<'a>,
 }
 
-impl<'a, 'de> de::SeqAccess<'de> for SeqVisitor<'a> {
+impl<'de> de::SeqAccess<'de> for SeqVisitor<'_> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
@@ -522,7 +522,7 @@ struct MapVisitor<'a> {
     iter: CowIter<'a>,
 }
 
-impl<'a, 'de> serde::de::MapAccess<'de> for MapVisitor<'a> {
+impl<'de> serde::de::MapAccess<'de> for MapVisitor<'_> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -551,7 +551,7 @@ struct VariantVisitor<'a> {
     value: Cow<'a, Value>,
 }
 
-impl<'a, 'de> serde::de::VariantAccess<'de> for VariantVisitor<'a> {
+impl<'de> serde::de::VariantAccess<'de> for VariantVisitor<'_> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {

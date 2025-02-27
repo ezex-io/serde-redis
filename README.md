@@ -1,4 +1,4 @@
-redis-serde
+serde-redis
 ===========
 
 [![Build Status](https://travis-ci.org/OneSignal/serde-redis.svg?branch=master)](https://travis-ci.org/OneSignal/serde-redis)
@@ -14,7 +14,7 @@ redis-serde
 ## Status
 
 - Deserialization: Everything _should_ work.
-- Serialization: **unimplemented**
+- Serialization: Everything _should_ work.
 
 ## Summary
 
