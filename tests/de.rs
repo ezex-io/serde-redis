@@ -459,6 +459,37 @@ fn deserialize_pipelined_single_hmap_newtype_fields() {
     assert_eq!(expected, actual);
 }
 
+#[test]
+fn deserialize_nested_structs() {
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct Fruit {
+        name: String,
+    }
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct Basket {
+        fruit: Fruit,
+    }
+    let values = Value::Array(vec![
+        Value::BulkString(b"fruit".to_vec()),
+        Value::Array(vec![
+            Value::BulkString(b"name".to_vec()),
+            Value::BulkString(b"apple".to_vec()),
+        ]),
+    ]);
+
+    let de = Deserializer::new(&values);
+    let actual: Basket = Deserialize::deserialize(de).unwrap();
+
+    let expected = Basket {
+        fruit: Fruit {
+            name: "apple".to_string(),
+        },
+    };
+
+    assert_eq!(expected, actual);
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Details {
     pub time: i64,
