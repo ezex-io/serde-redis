@@ -308,6 +308,37 @@ fn serialize_pipelined_single_hmap_newtype_fields() {
     assert_eq!(expected, actual);
 }
 
+#[test]
+fn serialize_nested_structs() {
+    #[derive(Debug, Serialize, PartialEq)]
+    struct Fruit {
+        name: String,
+    }
+
+    #[derive(Debug, Serialize, PartialEq)]
+    struct Basket {
+        fruit: Fruit,
+    }
+
+    let b = Basket {
+        fruit: Fruit {
+            name: "apple".to_string(),
+        },
+    };
+
+    let actual = b.serialize(Serializer).unwrap();
+
+    let expected = Value::Array(vec![
+        Value::BulkString(b"fruit".to_vec()),
+        Value::Array(vec![
+            Value::BulkString(b"name".to_vec()),
+            Value::BulkString(b"apple".to_vec()),
+        ]),
+    ]);
+
+    assert_eq!(expected, actual);
+}
+
 #[derive(Debug, Serialize)]
 pub struct Details {
     pub time: i64,
